@@ -117,6 +117,10 @@ parameters:
     type: boolean
     default: false
 
+  - name: EXPECTED_RESULT
+    type: string
+    default: ""
+
 
 steps:
   - script: |
@@ -204,7 +208,12 @@ steps:
       echo "SONiC PR system-level test is powered by SONiC Elastictest, for any issue, please send email to sonicelastictest@microsoft.com"
       echo "Runtime detailed progress at $(FRONTEND_URL)/scheduler/testplan/$TEST_PLAN_ID "
       # When "EXECUTING" finish, it changes into "KVMDUMP", "FAILED", "CANCELLED" or "FINISHED"
-      python ./.azure-pipelines/test_plan.py poll -i "$(TEST_PLAN_ID)" --expected-state EXECUTING
+
+      if [ -z "$(EXPECTED_RESULT)" ]; then
+        python ./.azure-pipelines/test_plan.py poll -i "$(TEST_PLAN_ID)" --expected-state EXECUTING
+      else
+        python ./.azure-pipelines/test_plan.py poll -i "$(TEST_PLAN_ID)" --expected-state EXECUTING --expected-result ${{ parameters.EXPECTED_RESULT }}
+      fi
 
     displayName: Run test
     timeoutInMinutes: ${{ parameters.MAX_RUN_TEST_MINUTES }}
