@@ -127,13 +127,14 @@ steps:
       echo "hello world!"
     displayName: HelloWorld
 
-  - script: |
-      set -ex
-      curl -u $(AZP_REPO_ACCESS_TOKEN) "${{ parameters.MGMT_URL }}&commitOrBranch=internal&api-version=5.0-preview.1&path=.azure-pipelines%2Ftest_plan.py" -o ./.azure-pipelines/test_plan.py
-      curl -u $(AZP_REPO_ACCESS_TOKEN) "${{ parameters.MGMT_URL }}&commitOrBranch=${{ parameters.MGMT_BRANCH }}&api-version=5.0-preview.1&path=.azure-pipelines%2Fpr_test_scripts.yaml" -o ./.azure-pipelines/pr_test_scripts.yaml
+  - ${{ if eq(parameters.DOWNLOAD_TEST_PLAN_SCRIPTS, true) }}:
+      - script: |
+          set -ex
+          curl -u $(AZP_REPO_ACCESS_TOKEN) "${{ parameters.MGMT_URL }}&commitOrBranch=internal&api-version=5.0-preview.1&path=.azure-pipelines%2Ftest_plan.py" -o ./.azure-pipelines/test_plan.py
+          curl -u $(AZP_REPO_ACCESS_TOKEN) "${{ parameters.MGMT_URL }}&commitOrBranch=${{ parameters.MGMT_BRANCH }}&api-version=5.0-preview.1&path=.azure-pipelines%2Fpr_test_scripts.yaml" -o ./.azure-pipelines/pr_test_scripts.yaml
 
-    displayName: Download test plan scripts
-    condition: eq(${{parameters.DOWNLOAD_TEST_PLAN_SCRIPTS}},true)
+        displayName: Download test plan scripts
+#        condition: eq(${{parameters.DOWNLOAD_TEST_PLAN_SCRIPTS}},true)
 
   - script: |
       set -e
