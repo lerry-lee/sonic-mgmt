@@ -134,11 +134,13 @@ steps:
   - ${{ if eq(parameters.DOWNLOAD_TEST_PLAN_SCRIPTS, true) }}:
       - script: |
           set -ex
-          curl -u $(AZP_REPO_ACCESS_TOKEN) "${{ parameters.MGMT_URL }}&commitOrBranch=internal&api-version=5.0-preview.1&path=.azure-pipelines%2Ftest_plan.py" -o ./.azure-pipelines/test_plan.py
-          curl -u $(AZP_REPO_ACCESS_TOKEN) "${{ parameters.MGMT_URL }}&commitOrBranch=${{ parameters.MGMT_BRANCH }}&api-version=5.0-preview.1&path=.azure-pipelines%2Fpr_test_scripts.yaml" -o ./.azure-pipelines/pr_test_scripts.yaml
-
+          if [[ -z "$(AZP_REPO_ACCESS_TOKEN)" ]]; then
+            curl "${{ parameters.MGMT_URL }}/master/.azure-pipelines/test_plan.py" -o ./.azure-pipelines/test_plan.py
+            curl "${{ parameters.MGMT_URL }}/${{ parameters.MGMT_BRANCH }}/.azure-pipelines/pr_test_scripts.yaml" -o ./.azure-pipelines/pr_test_scripts.yaml
+          else
+            curl -u $(AZP_REPO_ACCESS_TOKEN) "${{ parameters.MGMT_URL }}&commitOrBranch=internal&api-version=5.0-preview.1&path=.azure-pipelines%2Ftest_plan.py" -o ./.azure-pipelines/test_plan.py
+            curl -u $(AZP_REPO_ACCESS_TOKEN) "${{ parameters.MGMT_URL }}&commitOrBranch=${{ parameters.MGMT_BRANCH }}&api-version=5.0-preview.1&path=.azure-pipelines%2Fpr_test_scripts.yaml" -o ./.azure-pipelines/pr_test_scripts.yaml
         displayName: Download test plan scripts
-#        condition: eq(${{parameters.DOWNLOAD_TEST_PLAN_SCRIPTS}},true)
 
   - script: |
       set -e
@@ -180,7 +182,11 @@ steps:
       echo "Created test plan $TEST_PLAN_ID"
       echo "Check $(FRONTEND_URL)/scheduler/testplan/$TEST_PLAN_ID for test plan status"
       echo "##vso[task.setvariable variable=TEST_PLAN_ID]$TEST_PLAN_ID"
-
+    env:
+      TESTBED_TOOLS_URL: $(TESTBED_TOOLS_URL)
+      TENANT_ID: $(TESTBED_TOOLS_MSAL_TENANT_ID)
+      CLIENT_ID: $(TESTBED_TOOLS_MSAL_CLIENT_ID)
+      CLIENT_SECRET: $(TESTBED_TOOLS_MSAL_CLIENT_SECRET)
     displayName: Trigger test
 
   - script: |
@@ -190,7 +196,8 @@ steps:
       echo "Runtime detailed progress at $(FRONTEND_URL)/scheduler/testplan/$TEST_PLAN_ID "
       # When "LOCK_TESTBED" finish, it changes into "PREPARE_TESTBED"
       python ./.azure-pipelines/test_plan.py poll -i "$(TEST_PLAN_ID)" --expected-state LOCK_TESTBED
-
+    env:
+      TESTBED_TOOLS_URL: $(TESTBED_TOOLS_URL)
     displayName: Lock testbed
 
   - script: |
@@ -201,7 +208,8 @@ steps:
       echo "Runtime detailed progress at $(FRONTEND_URL)/scheduler/testplan/$TEST_PLAN_ID "
       # When "PREPARE_TESTBED" finish, it changes into "EXECUTING"
       python ./.azure-pipelines/test_plan.py poll -i "$(TEST_PLAN_ID)" --expected-state PREPARE_TESTBED
-
+    env:
+      TESTBED_TOOLS_URL: $(TESTBED_TOOLS_URL)
     displayName: Prepare testbed
 
   - script: |
@@ -216,7 +224,8 @@ steps:
       else
         python ./.azure-pipelines/test_plan.py poll -i "$(TEST_PLAN_ID)" --expected-state EXECUTING --expected-result ${{ parameters.EXPECTED_RESULT }}
       fi
-
+    env:
+      TESTBED_TOOLS_URL: $(TESTBED_TOOLS_URL)
     displayName: Run test
     timeoutInMinutes: ${{ parameters.MAX_RUN_TEST_MINUTES }}
 
@@ -229,7 +238,8 @@ steps:
           # When "KVMDUMP" finish, it changes into "FAILED", "CANCELLED" or "FINISHED"
           python ./.azure-pipelines/test_plan.py poll -i "$(TEST_PLAN_ID)" --expected-state KVMDUMP
         condition: succeededOrFailed()
-
+        env:
+          TESTBED_TOOLS_URL: $(TESTBED_TOOLS_URL)
         displayName: KVM dump
 
   - script: |
@@ -237,5 +247,9 @@ steps:
       echo "Try to cancel test plan $TEST_PLAN_ID, cancelling finished test plan has no effect."
       python ./.azure-pipelines/test_plan.py cancel -i "$(TEST_PLAN_ID)"
     condition: always()
-
+    env:
+      TESTBED_TOOLS_URL: $(TESTBED_TOOLS_URL)
+      TENANT_ID: $(TESTBED_TOOLS_MSAL_TENANT_ID)
+      CLIENT_ID: $(TESTBED_TOOLS_MSAL_CLIENT_ID)
+      CLIENT_SECRET: $(TESTBED_TOOLS_MSAL_CLIENT_SECRET)
     displayName: Finalize running test plan
