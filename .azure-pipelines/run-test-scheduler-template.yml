@@ -148,7 +148,7 @@ steps:
       --min-worker ${{ parameters.MIN_WORKER }} \
       --max-worker ${{ parameters.MAX_WORKER }} \
       --test-set ${{ parameters.TEST_SET }} \
-      --kvm-build-id 76556534 \
+      --kvm-build-id 76541265 \
       --kvm-image-branch "${{ parameters.KVM_IMAGE_BRANCH }}" \
       --deploy-mg-extra-params "${{ parameters.DEPLOY_MG_EXTRA_PARAMS }}" \
       --common-extra-params "${{ parameters.COMMON_EXTRA_PARAMS }}" \
