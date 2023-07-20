@@ -108,6 +108,7 @@ def download_artifacts(url, content_type, platform, buildid, num_asic, access_to
         while download_times < MAX_DOWNLOAD_TIMES:
             try:
                 print(('Downloading {} from build {}...'.format(filename, buildid)))
+                print(f"download url: {url}")
                 download_times += 1
                 # If access token is not empty, set headers
                 if access_token:
