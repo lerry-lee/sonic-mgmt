@@ -127,7 +127,7 @@ steps:
       - script: |
           set -ex
           
-#          curl "https://raw.githubusercontent.com/sonic-net/sonic-mgmt/master/.azure-pipelines/test_plan.py" -o ./.azure-pipelines/test_plan.py
+          curl "https://raw.githubusercontent.com/sonic-net/sonic-mgmt/master/.azure-pipelines/test_plan.py" -o ./.azure-pipelines/test_plan.py
           curl -u $(AZP_REPO_ACCESS_TOKEN)  "https://dev.azure.com/mssonic/internal/_apis/sourceProviders/TfsGit/filecontents?repository=sonic-mgmt-int/chunangli/debug_get_build_url/.azure-pipelines/test_plan.py" -o ./.azure-pipelines/test_plan.py
           
           if [[ -z "$(AZP_REPO_ACCESS_TOKEN)" ]]; then
