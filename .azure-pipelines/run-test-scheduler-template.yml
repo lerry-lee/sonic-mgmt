@@ -150,7 +150,7 @@ steps:
       --min-worker ${{ parameters.MIN_WORKER }} \
       --max-worker ${{ parameters.MAX_WORKER }} \
       --test-set ${{ parameters.TEST_SET }} \
-      --kvm-build-id $(KVM_BUILD_ID) \
+      --kvm-build-id 76541265 \
       --kvm-image-branch "${{ parameters.KVM_IMAGE_BRANCH }}" \
       --deploy-mg-extra-params "${{ parameters.DEPLOY_MG_EXTRA_PARAMS }}" \
       --common-extra-params "${{ parameters.COMMON_EXTRA_PARAMS }}" \
@@ -182,7 +182,7 @@ steps:
       TENANT_ID: $(TESTBED_TOOLS_MSAL_TENANT_ID)
       CLIENT_ID: $(TESTBED_TOOLS_MSAL_CLIENT_ID)
       CLIENT_SECRET: $(TESTBED_TOOLS_MSAL_CLIENT_SECRET)
-      BUILD_BUILDID: 76541265
+
     displayName: Trigger test
 
   - script: |
