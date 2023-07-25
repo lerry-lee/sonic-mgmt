@@ -124,7 +124,7 @@ steps:
           # If not sonic-mgmt/sonic-mgmt-int repo, need to download test_plan.py and pr_test_scripts.yaml
           set -ex
 
-          curl "https://raw.githubusercontent.com/sonic-net/sonic-mgmt/master/.azure-pipelines/test_plan.py" -o ./.azure-pipelines/test_plan.py
+          curl "https://raw.githubusercontent.com/lerry-lee/sonic-mgmt/chunangli/add_run_test_elastictest_template_TEST/.azure-pipelines/test_plan.py" -o ./.azure-pipelines/test_plan.py
         displayName: "Download test plan script"
       - script: |
           # If not sonic-mgmt/sonic-mgmt-int repo, need to download pr_test_scripts.yaml
