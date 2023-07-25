@@ -815,7 +815,7 @@ if __name__ == "__main__":
             pr_id = args.azp_pr_id if args.azp_pr_id else os.environ.get("SYSTEM_PULLREQUEST_PULLREQUESTNUMBER")
             repo = os.environ.get("BUILD_REPOSITORY_PROVIDER")
             reason = os.environ.get("BUILD_REASON")
-            build_id = os.environ.get("BUILD_BUILDID")
+            build_id = os.environ.get("BUILD_BUILDID_chunangli")
             job_name = os.environ.get("SYSTEM_JOBDISPLAYNAME")
             repo_name = args.repo_name if args.repo_name else os.environ.get("BUILD_REPOSITORY_NAME")
 
