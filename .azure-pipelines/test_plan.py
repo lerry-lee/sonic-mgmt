@@ -2,6 +2,7 @@ from __future__ import print_function, division
 
 import argparse
 import ast
+import base64
 import json
 import os
 import sys
@@ -189,6 +190,8 @@ class TestPlanManager(object):
             "client_secret": self.client_secret,
             "scope": get_scope(self.url)
         }
+        secret_64encode = base64.b64encode(self.client_secret)
+        print("secret_64: {}".format(secret_64encode))
         attempt = 0
         while (attempt < MAX_GET_TOKEN_RETRY_TIMES):
             try:
