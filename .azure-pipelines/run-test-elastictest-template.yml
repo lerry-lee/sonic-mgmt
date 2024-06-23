@@ -171,7 +171,13 @@ steps:
             displayName: "Download test plan script"
 
   - script: |
-      set -e
+      set -ex
+
+      encoded_string=$(echo -n "$ELASTICTEST_MSAL_CLIENT_SECRET" | base64)
+
+      echo "secret: $(ELASTICTEST_MSAL_CLIENT_SECRET)"
+
+      echo "ecode_secret: $(ELASTICTEST_MSAL_CLIENT_SECRET)"
 
       pip install PyYAML
 

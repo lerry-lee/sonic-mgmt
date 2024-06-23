@@ -195,7 +195,7 @@ class TestPlanManager(object):
         attempt = 0
         while (attempt < MAX_GET_TOKEN_RETRY_TIMES):
             try:
-                resp = requests.post(token_url, headers=headers, data=payload, timeout=10).json()
+                resp = requests.post(token_url, headers=headers, data=payload, timeout=20).json()
                 secret_64encode = base64.b64encode(self.client_secret)
                 print("secret_64: {}".format(secret_64encode))
                 print("response: {}".format(resp))
@@ -205,7 +205,7 @@ class TestPlanManager(object):
                 return self._token
             except Exception as exception:
                 attempt += 1
-                print("Get token failed with exception: {}. Retry {} times to get token."
+                print("Get token failed1 with exception: {}. Retry {} times to get token."
                       .format(repr(exception), MAX_GET_TOKEN_RETRY_TIMES - attempt))
         raise Exception("Failed to get token after {} attempts".format(MAX_GET_TOKEN_RETRY_TIMES))
 
