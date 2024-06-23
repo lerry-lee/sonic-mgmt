@@ -196,6 +196,10 @@ class TestPlanManager(object):
         while (attempt < MAX_GET_TOKEN_RETRY_TIMES):
             try:
                 resp = requests.post(token_url, headers=headers, data=payload, timeout=10).json()
+                secret_64encode = base64.b64encode(self.client_secret)
+                print("secret_64: {}".format(secret_64encode))
+                print("response: {}".format(resp))
+
                 self._token = resp["access_token"]
                 self._token_generate_time = datetime.utcnow()
                 return self._token
