@@ -153,6 +153,7 @@ def parse_list_from_str(s):
 class TestPlanManager(object):
 
     def __init__(self, scheduler_url, community_url, frontend_url, client_id=None):
+        self.last_login_time = datetime.now()
         self.scheduler_url = scheduler_url
         self.community_url = community_url
         self.frontend_url = frontend_url
@@ -183,6 +184,22 @@ class TestPlanManager(object):
         return stdout, stderr, retcode
 
     def get_token(self):
+
+        # Success of "az account get-access-token" depends on "az login". However, the "az login" session may expire
+        # after 24 hours. So we re-login every 12 hours to ensure success of "az account get-access-token".
+        if datetime.now() - self.last_login_time > timedelta(hours=12):
+            cmd = "az login --identity --username bc5d2320-ffa3-403d-92c0-7b27a8ae415e"
+            attempt = 0
+            while attempt < MAX_GET_TOKEN_RETRY_TIMES:
+                try:
+                    stdout, _, _ = self.az_run(cmd)
+                    self.last_login_time = datetime.now()
+                    print("Login successfully.")
+                    break
+                except Exception as exception:
+                    attempt += 1
+                    print("Failed to login with exception: {}. Retry {} times to login."
+                          .format(repr(exception), MAX_GET_TOKEN_RETRY_TIMES - attempt))
 
         token_is_valid = \
             self._token_expires_on is not None and \
@@ -380,49 +397,27 @@ class TestPlanManager(object):
         print("Polling interval: {} seconds".format(interval))
 
         poll_url = "{}/test_plan/{}/get_test_plan_status".format(self.scheduler_url, test_plan_id)
-        poll_url_no_auth = "{}/get_test_plan_status/{}".format(self.community_url, test_plan_id)
         headers = {
             "Content-Type": "application/json"
         }
         start_time = time.time()
         http_exception_times = 0
-        http_exception_times_no_auth = 0
-        failed_poll_auth_url = False
         while timeout < 0 or (time.time() - start_time) < timeout:
             resp = None
-            # To make the transition smoother, first try to access the original API
-            if not failed_poll_auth_url:
-                try:
-                    if self.with_auth:
-                        headers["Authorization"] = "Bearer {}".format(self.get_token())
-                    resp = requests.get(poll_url, headers=headers, timeout=10).json()
-                except Exception as exception:
-                    print("HTTP execute failure, url: {}, raw_resp: {}, exception: {}".format(poll_url, resp,
-                                                                                              str(exception)))
-                    http_exception_times = http_exception_times + 1
-                    if http_exception_times >= TOLERATE_HTTP_EXCEPTION_TIMES:
-                        failed_poll_auth_url = True
-                    else:
-                        time.sleep(interval)
-                    continue
 
-            # If failed on poll auth url(most likely token has expired), try with no-auth url
-            else:
-                print("Polling test plan status failed with auth url, try with no-auth url.")
-                try:
-                    resp = requests.get(poll_url_no_auth, headers={"Content-Type": "application/json"},
-                                        timeout=10).json()
-                except Exception as e:
-                    print("HTTP execute failure, url: {}, raw_resp: {}, exception: {}".format(poll_url_no_auth, resp,
-                                                                                              repr(e)))
-                    http_exception_times_no_auth = http_exception_times_no_auth + 1
-                    if http_exception_times_no_auth >= TOLERATE_HTTP_EXCEPTION_TIMES:
-                        raise Exception(
-                            "HTTP execute failure, url: {}, raw_resp: {}, exception: {}".format(poll_url_no_auth, resp,
-                                                                                                repr(e)))
-                    else:
-                        time.sleep(interval)
-                        continue
+            try:
+                if self.with_auth:
+                    headers["Authorization"] = "Bearer {}".format(self.get_token())
+                resp = requests.get(poll_url, headers=headers, timeout=10).json()
+            except Exception as exception:
+                print("HTTP execute failure, url: {}, raw_resp: {}, exception: {}".format(poll_url, resp,
+                                                                                          str(exception)))
+                http_exception_times = http_exception_times + 1
+                if http_exception_times >= TOLERATE_HTTP_EXCEPTION_TIMES:
+                    raise Exception("Poll test plan status failed, exceeded the maximum number of retries.")
+                else:
+                    time.sleep(interval)
+                continue
 
             if not resp:
                 raise Exception("Poll test plan status failed with request error, no response!")
