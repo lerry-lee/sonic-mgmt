@@ -48,5 +48,5 @@ stages:
         TOPOLOGY: t0
         MIN_WORKER: $(T0_INSTANCE_NUM)
         MAX_WORKER: $(T0_INSTANCE_NUM)
-        KVM_IMAGE_BRANCH: $(BUILD_BRANCH)
-        MGMT_BRANCH: $(BUILD_BRANCH)
+        KVM_IMAGE_BRANCH: master
+        MGMT_BRANCH: master
