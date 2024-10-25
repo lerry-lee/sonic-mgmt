@@ -187,19 +187,19 @@ class TestPlanManager(object):
 
         # Success of "az account get-access-token" depends on "az login". However, the "az login" session may expire
         # after 24 hours. So we re-login every 12 hours to ensure success of "az account get-access-token".
-        if datetime.now() - self.last_login_time > timedelta(hours=12):
-            cmd = "az login --identity --username bc5d2320-ffa3-403d-92c0-7b27a8ae415e"
-            attempt = 0
-            while attempt < MAX_GET_TOKEN_RETRY_TIMES:
-                try:
-                    stdout, _, _ = self.az_run(cmd)
-                    self.last_login_time = datetime.now()
-                    print("Login successfully.")
-                    break
-                except Exception as exception:
-                    attempt += 1
-                    print("Failed to login with exception: {}. Retry {} times to login."
-                          .format(repr(exception), MAX_GET_TOKEN_RETRY_TIMES - attempt))
+        # if datetime.now() - self.last_login_time > timedelta(hours=12):
+        cmd = "az login --identity --username bc5d2320-ffa3-403d-92c0-7b27a8ae415e"
+        attempt = 0
+        while attempt < MAX_GET_TOKEN_RETRY_TIMES:
+            try:
+                stdout, _, _ = self.az_run(cmd)
+                self.last_login_time = datetime.now()
+                print("Login successfully.")
+                break
+            except Exception as exception:
+                attempt += 1
+                print("Failed to login with exception: {}. Retry {} times to login."
+                      .format(repr(exception), MAX_GET_TOKEN_RETRY_TIMES - attempt))
 
         token_is_valid = \
             self._token_expires_on is not None and \
