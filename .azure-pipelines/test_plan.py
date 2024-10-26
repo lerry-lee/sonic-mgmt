@@ -299,7 +299,7 @@ class TestPlanManager(object):
                 "lock_wait_timeout_seconds": kwargs.get("lock_wait_timeout_seconds", None),
             },
             "test_option": {
-                "stop_on_failure": kwargs.get("stop_on_failure", True),
+                "stop_on_failure": kwargs.get("stop_on_failure", False),
                 "retry_times": kwargs.get("retry_times", 2),
                 "test_cases": {
                     "features": features,
@@ -808,8 +808,8 @@ if __name__ == "__main__":
         type=ast.literal_eval,
         dest="stop_on_failure",
         nargs='?',
-        const='True',
-        default='True',
+        const='False',
+        default='False',
         required=False,
         choices=[True, False],
         help="Stop whole test plan if test failed."
