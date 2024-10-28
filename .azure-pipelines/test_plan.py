@@ -8,7 +8,7 @@ import sys
 import subprocess
 import copy
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import requests
 import yaml
@@ -83,13 +83,13 @@ class AbstractStatus:
     def get_status(self):
         return self.status.value
 
-    def print_logs(self, test_plan_id, resp_data, start_time):
+    def print_logs(self, test_plan_id, resp_data, expected_status, start_time):
         status = resp_data.get("status", None)
         current_status = test_plan_status_factory(status).get_status()
 
         if current_status == self.get_status():
-            print("Test plan id: {}, status: {},  elapsed: {:.0f} seconds"
-                  .format(test_plan_id, resp_data.get("status", None), time.time() - start_time))
+            print("Test plan id: {}, status: {}, expected_status: {}, elapsed: {:.0f} seconds"
+                  .format(test_plan_id, resp_data.get("status", None), expected_status, time.time() - start_time))
 
 
 class InitStatus(AbstractStatus):
@@ -111,10 +111,10 @@ class ExecutingStatus(AbstractStatus):
     def __init__(self):
         super(ExecutingStatus, self).__init__(TestPlanStatus.EXECUTING)
 
-    def print_logs(self, test_plan_id, resp_data, start_time):
-        print("Test plan id: {}, status: {}, progress: {:.2f}%, elapsed: {:.0f} seconds"
+    def print_logs(self, test_plan_id, resp_data, expected_status, start_time):
+        print("Test plan id: {}, status: {}, expected_status: {}, progress: {:.2f}%, elapsed: {:.0f} seconds"
               .format(test_plan_id, resp_data.get("status", None),
-                      resp_data.get("progress", 0) * 100, time.time() - start_time))
+                      resp_data.get("progress", 0) * 100, expected_status, time.time() - start_time))
 
 
 class KvmDumpStatus(AbstractStatus):
@@ -150,80 +150,76 @@ def parse_list_from_str(s):
             if single_str.strip()]
 
 
+def cmd(cmds):
+    process = subprocess.Popen(
+        cmds,
+        shell=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    stdout, stderr = process.communicate()
+    return_code = process.returncode
+
+    return stdout, stderr, return_code
+
+
+def az_run(command):
+    stdout, stderr, retcode = cmd(command.split())
+    if retcode != 0:
+        raise Exception(f'Command {cmd} execution failed, rc={retcode}, error={stderr}')
+    return stdout, stderr, retcode
+
+
 class TestPlanManager(object):
 
-    def __init__(self, scheduler_url, community_url, frontend_url, client_id=None):
-        self.last_login_time = datetime.now()
+    def __init__(self, scheduler_url, frontend_url, client_id, sonic_automation_umi):
         self.scheduler_url = scheduler_url
-        self.community_url = community_url
         self.frontend_url = frontend_url
         self.client_id = client_id
-        self.with_auth = False
-        self._token = None
-        self._token_expires_on = None
-        if self.client_id:
-            self.with_auth = True
-            self.get_token()
+        self.sonic_automation_umi = sonic_automation_umi
+        self.last_login_time = None
 
-    def cmd(self, cmds):
-        process = subprocess.Popen(
-            cmds,
-            shell=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        stdout, stderr = process.communicate()
-        return_code = process.returncode
-
-        return stdout, stderr, return_code
-
-    def az_run(self, cmd):
-        stdout, stderr, retcode = self.cmd(cmd.split())
-        if retcode != 0:
-            raise Exception(f'Command {cmd} execution failed, rc={retcode}, error={stderr}')
-        return stdout, stderr, retcode
-
-    def get_token(self):
-
-        # Success of "az account get-access-token" depends on "az login". However, the "az login" session may expire
-        # after 24 hours. So we re-login every 12 hours to ensure success of "az account get-access-token".
-        # if datetime.now() - self.last_login_time > timedelta(hours=12):
-        cmd = "az login --identity --username bc5d2320-ffa3-403d-92c0-7b27a8ae415e"
+    def az_login(self):
+        login_cmd = "az login --identity --username {}".format(self.sonic_automation_umi)
         attempt = 0
         while attempt < MAX_GET_TOKEN_RETRY_TIMES:
             try:
-                stdout, _, _ = self.az_run(cmd)
-                self.last_login_time = datetime.now()
-                print("Login successfully.")
+                stdout, _, _ = az_run(login_cmd)
+                self.last_login_time = datetime.now(timezone.utc)
+                print("Az login successfully.")
                 break
             except Exception as exception:
                 attempt += 1
-                print("Failed to login with exception: {}. Retry {} times to login."
+                print("Failed to az login with exception: {}. Retry {} times to login."
                       .format(repr(exception), MAX_GET_TOKEN_RETRY_TIMES - attempt))
 
-        token_is_valid = \
-            self._token_expires_on is not None and \
-            (self._token_expires_on - datetime.now()) > timedelta(hours=TOKEN_EXPIRE_HOURS)
+    def get_token(self):
 
-        if self._token is not None and token_is_valid:
-            return self._token
+        # If have not logged in, or the login time exceeds the threshold
+        # (To ensure the token is valid, log in again every 6 hours)
+        if not self.last_login_time or (datetime.now(timezone.utc) - self.last_login_time > timedelta(hours=6)):
+            self.az_login()
 
-        cmd = 'az account get-access-token --resource {}'.format(self.client_id)
+        # Try to get token with re-try
+        get_token_cmd = 'az account get-access-token --resource {}'.format(self.client_id)
         attempt = 0
         while attempt < MAX_GET_TOKEN_RETRY_TIMES:
+
             try:
-                stdout, _, _ = self.az_run(cmd)
+                stdout, _, _ = az_run(get_token_cmd)
 
                 token = json.loads(stdout.decode("utf-8"))
-                self._token = token.get("accessToken", None)
-                if not self._token:
+                access_token = token.get("accessToken", None)
+                if not access_token:
                     raise Exception("Parse token from stdout failed")
 
                 # Parse token expires time from string
                 token_expires_on = token.get("expiresOn", "")
-                self._token_expires_on = datetime.strptime(token_expires_on, "%Y-%m-%d %H:%M:%S.%f")
-                print("Get token successfully.")
-                return self._token
+                if not token_expires_on:
+                    print("Get token successfully. Token will expire on {}".format(
+                        datetime.strptime(token_expires_on, "%Y-%m-%d %H:%M:%S.%f")))
+
+                return access_token
 
             except Exception as exception:
                 attempt += 1
@@ -340,7 +336,6 @@ class TestPlanManager(object):
         print('Creating test plan with payload:\n{}'.format(json.dumps(payload, indent=4)))
         headers = {
             "Authorization": "Bearer {}".format(self.get_token()),
-            "scheduler-site": "PRTest",
             "Content-Type": "application/json"
         }
         raw_resp = {}
@@ -374,7 +369,6 @@ class TestPlanManager(object):
         payload = json.dumps({})
         headers = {
             "Authorization": "Bearer {}".format(self.get_token()),
-            "scheduler-site": "PRTest",
             "Content-Type": "application/json"
         }
 
@@ -398,6 +392,7 @@ class TestPlanManager(object):
 
         poll_url = "{}/test_plan/{}/get_test_plan_status".format(self.scheduler_url, test_plan_id)
         headers = {
+            "Authorization": "Bearer {}".format(self.get_token()),
             "Content-Type": "application/json"
         }
         start_time = time.time()
@@ -406,8 +401,6 @@ class TestPlanManager(object):
             resp = None
 
             try:
-                if self.with_auth:
-                    headers["Authorization"] = "Bearer {}".format(self.get_token())
                 resp = requests.get(poll_url, headers=headers, timeout=10).json()
             except Exception as exception:
                 print("HTTP execute failure, url: {}, raw_resp: {}, exception: {}".format(poll_url, resp,
@@ -436,11 +429,10 @@ class TestPlanManager(object):
                 current_status = test_plan_status_factory(current_tp_status)
                 expected_status = test_plan_status_factory(expected_state)
 
-                print("current test plan status: {}, expected status: {}".format(current_tp_status, expected_state))
+                current_status.print_logs(test_plan_id, resp_data, expected_status, start_time)
 
-                if expected_status.get_status() == current_status.get_status():
-                    current_status.print_logs(test_plan_id, resp_data, start_time)
-                elif expected_status.get_status() < current_status.get_status():
+                # If test plan has finished current step, its now status will behind the expected status
+                if expected_status.get_status() < current_status.get_status():
                     steps = None
                     step_status = None
                     runtime = resp_data.get("runtime", None)
@@ -495,9 +487,6 @@ class TestPlanManager(object):
 
                     print("Current step status is {}".format(step_status))
                     return
-                else:
-                    print("Current test plan state is {}, waiting for the expected state {}".format(current_tp_status,
-                                                                                                    expected_state))
 
                 time.sleep(interval)
 
@@ -934,9 +923,9 @@ if __name__ == "__main__":
 
     env = {
         "elastictest_scheduler_backend_url": os.environ.get("ELASTICTEST_SCHEDULER_BACKEND_URL"),
-        "elastictest_community_url": os.environ.get("ELASTICTEST_COMMUNITY_URL"),
         "client_id": os.environ.get("ELASTICTEST_MSAL_CLIENT_ID"),
         "frontend_url": os.environ.get("ELASTICTEST_FRONTEND_URL", "https://elastictest.org"),
+        "sonic_automation_umi": os.environ.get("SONIC_AUTOMATION_UMI", None),
     }
     env_missing = [k.upper() for k, v in env.items() if k.upper() in required_env and not v]
     if env_missing:
@@ -946,9 +935,10 @@ if __name__ == "__main__":
     try:
         tp = TestPlanManager(
             env["elastictest_scheduler_backend_url"],
-            env["elastictest_community_url"],
             env["frontend_url"],
-            env["client_id"])
+            env["client_id"],
+            env["sonic_automation_umi"]
+        )
 
         if args.action == "create":
             pr_id = os.environ.get("SYSTEM_PULLREQUEST_PULLREQUESTNUMBER") or os.environ.get(
