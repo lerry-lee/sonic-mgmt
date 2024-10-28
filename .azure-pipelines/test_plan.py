@@ -214,7 +214,8 @@ class TestPlanManager(object):
                 # Parse token expires time from string
                 token_expires_on = token.get("expiresOn", "")
                 if token_expires_on:
-                    print("Get token successfully. Token will expire on {}".format(
+                    print("Get token successfully. Now is {}, token will expire on {}.".format(
+                        datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f"),
                         datetime.strptime(token_expires_on, "%Y-%m-%d %H:%M:%S.%f")))
 
                 return access_token
