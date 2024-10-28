@@ -23,7 +23,6 @@ INTERNAL_SONIC_MGMT_REPO = "https://dev.azure.com/mssonic/internal/_git/sonic-mg
 PR_TEST_SCRIPTS_FILE = "pr_test_scripts.yaml"
 SPECIFIC_PARAM_KEYWORD = "specific_param"
 TOLERATE_HTTP_EXCEPTION_TIMES = 20
-TOKEN_EXPIRE_HOURS = 1
 MAX_GET_TOKEN_RETRY_TIMES = 3
 TEST_PLAN_STATUS_UNSUCCESSFUL_FINISHED = ["FAILED", "CANCELLED"]
 TEST_PLAN_STEP_STATUS_UNFINISHED = ["EXECUTING", None]
@@ -195,9 +194,8 @@ class TestPlanManager(object):
 
     def get_token(self):
 
-        # If have not logged in, or the login time exceeds the threshold
-        # (To ensure the token is valid, log in again every 6 hours)
-        if not self.last_login_time or (datetime.now(timezone.utc) - self.last_login_time > timedelta(hours=6)):
+        # If have not logged in, or the login time exceeds the threshold(Set to 12h to prevent the 24h expiration)
+        if not self.last_login_time or (datetime.now(timezone.utc) - self.last_login_time > timedelta(hours=12)):
             self.az_login()
 
         # Try to get token with re-try
@@ -209,17 +207,13 @@ class TestPlanManager(object):
                 stdout, _, _ = az_run(get_token_cmd)
 
                 token = json.loads(stdout.decode("utf-8"))
-
-                print("token: ")
-                print(json.dumps(token, indent=4))
-
                 access_token = token.get("accessToken", None)
                 if not access_token:
-                    raise Exception("Parse token from stdout failed")
+                    raise Exception("Parse token from stdout failed, accessToken is None.")
 
                 # Parse token expires time from string
                 token_expires_on = token.get("expiresOn", "")
-                if not token_expires_on:
+                if token_expires_on:
                     print("Get token successfully. Token will expire on {}".format(
                         datetime.strptime(token_expires_on, "%Y-%m-%d %H:%M:%S.%f")))
 
