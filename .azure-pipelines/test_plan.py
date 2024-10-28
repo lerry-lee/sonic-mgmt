@@ -209,6 +209,10 @@ class TestPlanManager(object):
                 stdout, _, _ = az_run(get_token_cmd)
 
                 token = json.loads(stdout.decode("utf-8"))
+
+                print("token: ")
+                print(json.dumps(token, indent=4))
+
                 access_token = token.get("accessToken", None)
                 if not access_token:
                     raise Exception("Parse token from stdout failed")
@@ -429,7 +433,7 @@ class TestPlanManager(object):
                 current_status = test_plan_status_factory(current_tp_status)
                 expected_status = test_plan_status_factory(expected_state)
 
-                current_status.print_logs(test_plan_id, resp_data, expected_status, start_time)
+                current_status.print_logs(test_plan_id, resp_data, expected_state, start_time)
 
                 # If test plan has finished current step, its now status will behind the expected status
                 if expected_status.get_status() < current_status.get_status():
