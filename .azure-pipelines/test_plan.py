@@ -22,7 +22,7 @@ GITHUB_SONIC_MGMT_REPO = "https://github.com/sonic-net/sonic-mgmt"
 INTERNAL_SONIC_MGMT_REPO = "https://dev.azure.com/mssonic/internal/_git/sonic-mgmt-int"
 PR_TEST_SCRIPTS_FILE = "pr_test_scripts.yaml"
 SPECIFIC_PARAM_KEYWORD = "specific_param"
-TOLERATE_HTTP_EXCEPTION_TIMES = 10
+MAX_POLL_RETRY_TIMES = 3
 MAX_GET_TOKEN_RETRY_TIMES = 3
 TEST_PLAN_STATUS_UNSUCCESSFUL_FINISHED = ["FAILED", "CANCELLED"]
 TEST_PLAN_STEP_STATUS_UNFINISHED = ["EXECUTING", None]
@@ -396,7 +396,7 @@ class TestPlanManager(object):
             "Content-Type": "application/json"
         }
         start_time = time.time()
-        http_exception_times = 0
+        poll_retry_times = 0
         while timeout < 0 or (time.time() - start_time) < timeout:
             try:
                 resp = requests.get(poll_url, headers=headers, timeout=10).json()
@@ -420,8 +420,8 @@ class TestPlanManager(object):
                     "Content-Type": "application/json"
                 }
 
-                http_exception_times = http_exception_times + 1
-                if http_exception_times >= TOLERATE_HTTP_EXCEPTION_TIMES:
+                poll_retry_times = poll_retry_times + 1
+                if poll_retry_times >= MAX_POLL_RETRY_TIMES:
                     raise Exception("Poll test plan status failed, exceeded the maximum number of retries.")
                 else:
                     time.sleep(interval)
