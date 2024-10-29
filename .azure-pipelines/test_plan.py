@@ -263,10 +263,7 @@ class TestPlanManager(object):
             # Add device type arg
             common_extra_params = common_extra_params + " --device_type=vs"
 
-        # If triggered by the internal repos, use internal sonic-mgmt repo as the code base
-        sonic_mgmt_repo_url = GITHUB_SONIC_MGMT_REPO
-        if kwargs.get("source_repo") in INTERNAL_REPO_LIST:
-            sonic_mgmt_repo_url = INTERNAL_SONIC_MGMT_REPO
+        sonic_mgmt_repo_url = "https://github.com/lerry-lee/sonic-mgmt"
 
         # If triggered by mgmt repo, use pull request id as the code base
         sonic_mgmt_pull_request_id = ""
