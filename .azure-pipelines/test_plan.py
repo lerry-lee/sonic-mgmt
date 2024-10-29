@@ -312,7 +312,7 @@ class TestPlanManager(object):
                 },
                 "sonic_mgmt": {
                     "repo_url": sonic_mgmt_repo_url,
-                    "branch": kwargs["mgmt_branch"],
+                    "branch": "chunangli/test_pr_test",
                     "pull_request_id": sonic_mgmt_pull_request_id
                 },
                 "common_param": common_extra_params,
