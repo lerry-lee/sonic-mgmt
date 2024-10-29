@@ -263,19 +263,23 @@ class TestPlanManager(object):
             # Add device type arg
             common_extra_params = common_extra_params + " --device_type=vs"
 
-        sonic_mgmt_repo_url = "https://github.com/lerry-lee/sonic-mgmt"
+        # If triggered by the internal repos, use internal sonic-mgmt repo as the code base
+        sonic_mgmt_repo_url = GITHUB_SONIC_MGMT_REPO
+        if kwargs.get("source_repo") in INTERNAL_REPO_LIST:
+            sonic_mgmt_repo_url = INTERNAL_SONIC_MGMT_REPO
 
         # If triggered by mgmt repo, use pull request id as the code base
-        sonic_mgmt_pull_request_id = ""
+        sonic_mgmt_pull_request_id = "15203"
         if MGMT_REPO_FLAG in kwargs.get("source_repo"):
             sonic_mgmt_pull_request_id = pr_id
+            print(sonic_mgmt_pull_request_id)
 
         # If triggered by buildimage repo, use image built from the buildId
         kvm_image_build_id = kvm_build_id
-        kvm_image_branch = kwargs.get("kvm_image_branch", "")
+
         if BUILDIMAGE_REPO_FLAG in kwargs.get("source_repo"):
             kvm_image_build_id = build_id
-            kvm_image_branch = ""
+
         affinity = json.loads(kwargs.get("affinity", "[]"))
         payload = {
             "name": test_plan_name,
@@ -305,12 +309,12 @@ class TestPlanManager(object):
                     "upgrade_image_param": kwargs.get("upgrade_image_param", None),
                     "release": "",
                     "kvm_image_build_id": kvm_image_build_id,
-                    "kvm_image_branch": kvm_image_branch
+                    "kvm_image_branch": "master"
                 },
                 "sonic_mgmt": {
                     "repo_url": sonic_mgmt_repo_url,
-                    "branch": "chunangli/test_pr_test",
-                    "pull_request_id": sonic_mgmt_pull_request_id
+                    "branch": "chunangli/draft_test_not_use_azcli_task",
+                    "pull_request_id": 15203
                 },
                 "common_param": common_extra_params,
                 "specific_param": kwargs.get("specific_param", []),
