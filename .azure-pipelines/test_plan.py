@@ -398,12 +398,21 @@ class TestPlanManager(object):
         start_time = time.time()
         http_exception_times = 0
         while timeout < 0 or (time.time() - start_time) < timeout:
-            resp = None
-
             try:
                 resp = requests.get(poll_url, headers=headers, timeout=10).json()
+
+                if not resp:
+                    raise Exception("Poll test plan status failed with request error, no response!")
+
+                if not resp["success"]:
+                    raise Exception(f"Get test plan status failed with error: {resp['errmsg']}")
+
+                resp_data = resp.get("data", None)
+                if not resp_data:
+                    raise Exception("No valid data in response.")
+
             except Exception as exception:
-                print(f"HTTP execute failure, url: {poll_url}, raw_resp: {resp}, exception: {str(exception)}")
+                print(f"Failed to get valid response, url: {poll_url}, raw_resp: {resp}, exception: {str(exception)}")
 
                 # Refresh headers token to address token expiration issue
                 headers = {
@@ -417,16 +426,6 @@ class TestPlanManager(object):
                 else:
                     time.sleep(interval)
                 continue
-
-            if not resp:
-                raise Exception("Poll test plan status failed with request error, no response!")
-
-            if not resp["success"]:
-                raise Exception(f"Get test plan status at {poll_url} failed with error: {resp['errmsg']}")
-
-            resp_data = resp.get("data", None)
-            if not resp_data:
-                raise Exception(f"No valid data in response: {str(resp)}")
 
             current_tp_status = resp_data.get("status", None)
             current_tp_result = resp_data.get("result", None)
