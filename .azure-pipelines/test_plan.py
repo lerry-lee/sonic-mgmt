@@ -22,7 +22,7 @@ GITHUB_SONIC_MGMT_REPO = "https://github.com/sonic-net/sonic-mgmt"
 INTERNAL_SONIC_MGMT_REPO = "https://dev.azure.com/mssonic/internal/_git/sonic-mgmt-int"
 PR_TEST_SCRIPTS_FILE = "pr_test_scripts.yaml"
 SPECIFIC_PARAM_KEYWORD = "specific_param"
-MAX_POLL_RETRY_TIMES = 3
+MAX_POLL_RETRY_TIMES = 10
 MAX_GET_TOKEN_RETRY_TIMES = 3
 TEST_PLAN_STATUS_UNSUCCESSFUL_FINISHED = ["FAILED", "CANCELLED"]
 TEST_PLAN_STEP_STATUS_UNFINISHED = ["EXECUTING", None]
@@ -170,16 +170,16 @@ def run_cmd(cmd):
 
 class TestPlanManager(object):
 
-    def __init__(self, scheduler_url, frontend_url, elastictest_msal_client_id, sonic_automation_umi):
+    def __init__(self, scheduler_url, frontend_url, client_id, managed_identity_id):
         self.scheduler_url = scheduler_url
         self.frontend_url = frontend_url
-        self.elastictest_msal_client_id = elastictest_msal_client_id
-        self.sonic_automation_umi = sonic_automation_umi
+        self.client_id = client_id
+        self.managed_identity_id = managed_identity_id
 
     def get_token(self):
 
         # 1. Run az login with re-try
-        az_login_cmd = f"az login --identity --username {self.sonic_automation_umi}"
+        az_login_cmd = f"az login --identity --username {self.managed_identity_id}"
         az_login_attempts = 0
         while az_login_attempts < MAX_GET_TOKEN_RETRY_TIMES:
             try:
@@ -198,7 +198,7 @@ class TestPlanManager(object):
             raise Exception(f"Failed to az login after {MAX_GET_TOKEN_RETRY_TIMES} attempts.")
 
         # 2. Get access token with re-try
-        get_token_cmd = f"az account get-access-token --resource {self.elastictest_msal_client_id}"
+        get_token_cmd = f"az account get-access-token --resource {self.client_id}"
         get_token_attempts = 0
         while get_token_attempts < MAX_GET_TOKEN_RETRY_TIMES:
             try:
@@ -398,6 +398,7 @@ class TestPlanManager(object):
         start_time = time.time()
         poll_retry_times = 0
         while timeout < 0 or (time.time() - start_time) < timeout:
+            resp = None
             try:
                 resp = requests.get(poll_url, headers=headers, timeout=10).json()
 
@@ -920,13 +921,13 @@ if __name__ == "__main__":
 
     print(f"Test plan utils parameters: {args}")
 
-    required_env = ["ELASTICTEST_SCHEDULER_BACKEND_URL", "ELASTICTEST_MSAL_CLIENT_ID", "SONIC_AUTOMATION_UMI"]
+    required_env = ["ELASTICTEST_SCHEDULER_BACKEND_URL", "CLIENT_ID", "MANAGED_IDENTITY_ID"]
 
     env = {
         "elastictest_scheduler_backend_url": os.environ.get("ELASTICTEST_SCHEDULER_BACKEND_URL"),
-        "elastictest_msal_client_id": os.environ.get("ELASTICTEST_MSAL_CLIENT_ID"),
+        "client_id": os.environ.get("ELASTICTEST_MSAL_CLIENT_ID"),
         "frontend_url": os.environ.get("ELASTICTEST_FRONTEND_URL", "https://elastictest.org"),
-        "sonic_automation_umi": os.environ.get("SONIC_AUTOMATION_UMI"),
+        "managed_identity_id": os.environ.get("SONIC_AUTOMATION_UMI"),
     }
     env_missing = [k.upper() for k, v in env.items() if k.upper() in required_env and not v]
     if env_missing:
@@ -937,8 +938,8 @@ if __name__ == "__main__":
         tp = TestPlanManager(
             env["elastictest_scheduler_backend_url"],
             env["frontend_url"],
-            env["elastictest_msal_client_id"],
-            env["sonic_automation_umi"]
+            env["client_id"],
+            env["managed_identity_id"]
         )
 
         if args.action == "create":
