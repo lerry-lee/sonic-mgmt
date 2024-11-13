@@ -239,7 +239,7 @@ steps:
       TEST_PLAN_ID_LIST_STRING=${TEST_PLAN_ID_LIST_STRING%,}
       echo "##vso[task.setvariable variable=TEST_PLAN_ID_LIST_STRING]$TEST_PLAN_ID_LIST_STRING"
 
-    displayName: "Trigger test"
+    displayName: "Trigger test 666"
 
   - script: |
       set -o

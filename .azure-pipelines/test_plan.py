@@ -942,6 +942,8 @@ if __name__ == "__main__":
             env["managed_identity_id"]
         )
 
+        print("chunangli ===========================================================")
+
         if args.action == "create":
             pr_id = os.environ.get("SYSTEM_PULLREQUEST_PULLREQUESTNUMBER") or os.environ.get(
                 "SYSTEM_PULLREQUEST_PULLREQUESTID")
