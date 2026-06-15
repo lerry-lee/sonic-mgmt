@@ -38,7 +38,7 @@ stages:
 
   jobs:
   - job: t0_elastictest
-    displayName: "kvmtest-t0 by Elastictest"
+    displayName: "kvmtest-t0 by Elastictest (debug > 24h)"
     timeoutInMinutes: 1800
     continueOnError: false
     pool: sonic-ubuntu-1c
@@ -48,5 +48,5 @@ stages:
         TOPOLOGY: t0
         MIN_WORKER: $(T0_INSTANCE_NUM)
         MAX_WORKER: $(T0_INSTANCE_NUM)
-        KVM_IMAGE_BRANCH: $(BUILD_BRANCH)
-        MGMT_BRANCH: $(BUILD_BRANCH)
+        KVM_IMAGE_BRANCH: master
+        MGMT_BRANCH: master
